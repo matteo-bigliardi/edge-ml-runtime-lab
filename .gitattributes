@@ -1,0 +1,14 @@
+# Source files stay LF whatever the checkout platform. Windows editors and
+# tooling will otherwise flip a file to CRLF on the first write and turn a
+# three-line change into a whole-file diff.
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.h text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.sh text eol=lf

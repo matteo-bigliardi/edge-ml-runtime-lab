@@ -1,0 +1,42 @@
+planning/
+
+# Build output
+build/
+out/
+cmake-build-*/
+CMakeUserPresets.json
+_deps/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.pdb
+*.ilk
+*.exe
+
+# Test and benchmark artefacts
+Testing/
+benchmarks/results/*.csv
+benchmarks/results/*.json
+*.log
+
+# Python (bindings, comparison harness)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Models and datasets are downloaded, not committed
+models/
+data/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
