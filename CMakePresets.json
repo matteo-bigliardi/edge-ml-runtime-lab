@@ -1,0 +1,108 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "TINYTENSOR_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "ninja",
+      "displayName": "Ninja - Debug",
+      "description": "Default for local development and for Linux CI. Needs a compiler on PATH.",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "ninja-release",
+      "displayName": "Ninja - RelWithDebInfo",
+      "description": "Build used for benchmarks: optimised, but still profileable.",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "vs",
+      "displayName": "Visual Studio 2022 - x64",
+      "description": "Finds MSVC by itself, so it works from a plain shell and on Windows CI.",
+      "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ninja",
+      "configurePreset": "ninja"
+    },
+    {
+      "name": "ninja-release",
+      "configurePreset": "ninja-release"
+    },
+    {
+      "name": "vs",
+      "configurePreset": "vs",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ninja",
+      "configurePreset": "ninja",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ninja-release",
+      "configurePreset": "ninja-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "vs",
+      "configurePreset": "vs",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "ninja",
+      "steps": [
+        { "type": "configure", "name": "ninja" },
+        { "type": "build", "name": "ninja" },
+        { "type": "test", "name": "ninja" }
+      ]
+    },
+    {
+      "name": "vs",
+      "steps": [
+        { "type": "configure", "name": "vs" },
+        { "type": "build", "name": "vs" },
+        { "type": "test", "name": "vs" }
+      ]
+    }
+  ]
+}

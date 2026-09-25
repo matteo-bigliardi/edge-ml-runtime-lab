@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Both toolchains report, even when one of them is already red: knowing
+      # a failure is MSVC-only is most of the diagnosis.
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux (GCC, Ninja)
+            os: ubuntu-latest
+            preset: ninja
+          - name: Windows (MSVC)
+            os: windows-latest
+            preset: vs
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DTINYTENSOR_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
