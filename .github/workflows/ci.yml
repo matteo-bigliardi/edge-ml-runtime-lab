@@ -14,17 +14,20 @@ jobs:
       # Both toolchains report, even when one of them is already red: knowing
       # a failure is MSVC-only is most of the diagnosis.
       fail-fast: false
+      # Images are pinned, not -latest: windows-latest moved to Visual Studio
+      # 2026 and dropped the 2022 generator the vs preset asks for. Moving to a
+      # new toolchain should be a commit here, not something the runner decides.
       matrix:
         include:
           - name: Linux (GCC, Ninja)
-            os: ubuntu-latest
+            os: ubuntu-24.04
             preset: ninja
           - name: Windows (MSVC)
-            os: windows-latest
+            os: windows-2022
             preset: vs
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Ninja
         if: runner.os == 'Linux'
