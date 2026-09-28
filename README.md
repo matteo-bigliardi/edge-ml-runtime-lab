@@ -61,6 +61,7 @@ scripts/        helper scripts
 Deliberately fixed, so the measurements mean something:
 
 - `float` only, CPU only, row-major contiguous tensors;
+- broadcasting only where a linear layer needs it: `[n, m] + [m]`;
 - no non-contiguous views, no autocast, no distributed anything;
 - the goal is not to reimplement PyTorch, it is to be able to explain what it does.
 

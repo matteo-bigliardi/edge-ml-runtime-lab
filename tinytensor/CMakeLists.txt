@@ -1,4 +1,5 @@
 add_library(tinytensor
+    src/ops.cpp
     src/shape.cpp
     src/tensor.cpp)
 
