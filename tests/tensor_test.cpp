@@ -3,10 +3,13 @@
 #include "test_helpers.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <cstddef>
 #include <stdexcept>
 #include <vector>
 
+using Catch::Matchers::WithinAbs;
 using tinytensor::Shape;
 using tinytensor::Tensor;
 using tinytensor::testing::values;
@@ -56,6 +59,45 @@ TEST_CASE("copying a tensor shares its storage", "[tensor]") {
     alias.mutable_data()[1] = 5.0F;
 
     CHECK(values(original) == std::vector<float>{0.0F, 5.0F, 0.0F});
+}
+
+TEST_CASE("randn reproduces a reference computed outside C++", "[tensor][randn]") {
+    // Produced by an independent Python implementation of mt19937_64 and the
+    // same Box-Muller transform. Matching it on both CI jobs is what shows the
+    // sequence does not depend on the standard library. The tolerance only
+    // absorbs last-bit differences between the platforms' log/sin/cos.
+    const std::vector<float> expected{-0.48121771F, -0.57453686F, 0.49458385F, 0.57012153F,
+                                      0.37455428F};
+
+    const Tensor sample = Tensor::randn({5}, 42);
+
+    REQUIRE(sample.numel() == 5);
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        CHECK_THAT(sample.data()[i], WithinAbs(expected[i], 1e-6));
+    }
+}
+
+TEST_CASE("randn is a function of its seed", "[tensor][randn]") {
+    CHECK(values(Tensor::randn({2, 3}, 7)) == values(Tensor::randn({2, 3}, 7)));
+    CHECK(values(Tensor::randn({2, 3}, 7)) != values(Tensor::randn({2, 3}, 8)));
+}
+
+TEST_CASE("randn samples have zero mean and unit variance", "[tensor][randn]") {
+    const Tensor sample = Tensor::randn({100'000}, 1);
+
+    double sum = 0.0;
+    double sum_of_squares = 0.0;
+    for (const float value : sample.data()) {
+        sum += value;
+        sum_of_squares += static_cast<double>(value) * value;
+    }
+    const double count = static_cast<double>(sample.numel());
+    const double mean = sum / count;
+
+    // Both bounds sit between four and five standard errors: loose enough never
+    // to flake on a correct generator, tight enough to catch a wrong scale.
+    CHECK_THAT(mean, WithinAbs(0.0, 0.015));
+    CHECK_THAT(sum_of_squares / count - mean * mean, WithinAbs(1.0, 0.02));
 }
 
 TEST_CASE("clone copies the data, not the handle", "[tensor]") {

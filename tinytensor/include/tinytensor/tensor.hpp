@@ -29,6 +29,10 @@ public:
     /// their count does not match the shape.
     [[nodiscard]] static Tensor from_vector(Shape shape, std::vector<float> values);
 
+    /// Standard normal samples. The same seed gives the same values with any
+    /// standard library, so a seeded test means the same thing on every CI job.
+    [[nodiscard]] static Tensor randn(Shape shape, std::uint64_t seed);
+
     [[nodiscard]] const Shape& shape() const noexcept;
     [[nodiscard]] std::int64_t numel() const noexcept;
 
