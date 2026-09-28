@@ -102,6 +102,30 @@ Tensor matmul(const Tensor& lhs, const Tensor& rhs) {
     return Tensor::from_vector({a_shape.dim(0), b_shape.dim(1)}, std::move(out));
 }
 
+Tensor relu(const Tensor& input) {
+    const auto x = input.data();
+    std::vector<float> out(x.size());
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        // Written as "negative becomes zero" rather than std::max(x, 0):
+        // a NaN compares false, so it passes through instead of turning
+        // into a silent zero.
+        out[i] = x[i] < 0.0F ? 0.0F : x[i];
+    }
+    return Tensor::from_vector(input.shape(), std::move(out));
+}
+
+Tensor sum(const Tensor& input) {
+    // Accumulated in double: a float accumulator stops absorbing small terms
+    // once the running total is large, and this sum is what a loss is made
+    // of. The gradient checks difference two nearby losses, so an error here
+    // would show up as a wrong gradient.
+    double total = 0.0;
+    for (const float value : input.data()) {
+        total += value;
+    }
+    return Tensor::from_vector({}, {static_cast<float>(total)});
+}
+
 Tensor operator+(const Tensor& lhs, const Tensor& rhs) {
     return add(lhs, rhs);
 }

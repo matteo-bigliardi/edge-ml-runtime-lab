@@ -4,6 +4,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -96,6 +98,41 @@ TEST_CASE("matmul rejects mismatched or non-2-D operands", "[ops][matmul]") {
                     std::invalid_argument);
     CHECK_THROWS_AS(tinytensor::matmul(Tensor::zeros({2, 2, 2}), Tensor::zeros({2, 2})),
                     std::invalid_argument);
+}
+
+TEST_CASE("relu zeroes negatives and keeps the rest", "[ops][relu]") {
+    const Tensor x = Tensor::from_vector({2, 2}, {-1.5F, 0.0F, 2.0F, -0.25F});
+
+    const Tensor y = tinytensor::relu(x);
+
+    CHECK(y.shape() == Shape{2, 2});
+    CHECK(values(y) == std::vector<float>{0.0F, 0.0F, 2.0F, 0.0F});
+}
+
+TEST_CASE("relu lets NaN through", "[ops][relu]") {
+    const Tensor x = Tensor::from_vector({1}, {std::numeric_limits<float>::quiet_NaN()});
+
+    CHECK(std::isnan(tinytensor::relu(x).item()));
+}
+
+TEST_CASE("sum reduces every element to a scalar", "[ops][sum]") {
+    const Tensor total = tinytensor::sum(Tensor::from_vector({2, 3}, {1.0F, 2.0F, 3.0F,
+                                                                      4.0F, 5.0F, 6.0F}));
+
+    CHECK(total.shape() == Shape{});
+    CHECK(total.item() == 21.0F);
+}
+
+TEST_CASE("sum of an empty tensor is zero", "[ops][sum]") {
+    CHECK(tinytensor::sum(Tensor::zeros({0, 4})).item() == 0.0F);
+}
+
+TEST_CASE("sum keeps small terms next to large ones", "[ops][sum]") {
+    // In float, 1e8 + 1 rounds back to 1e8 (the spacing there is 8), so a
+    // float accumulator returns 0. The double accumulator returns 1.
+    const Tensor x = Tensor::from_vector({3}, {1e8F, 1.0F, -1e8F});
+
+    CHECK(tinytensor::sum(x).item() == 1.0F);
 }
 
 TEST_CASE("the result of an operation owns new storage", "[ops]") {

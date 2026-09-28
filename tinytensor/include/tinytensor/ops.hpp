@@ -19,6 +19,13 @@ namespace tinytensor {
 /// Matrix product of an [n, k] and a [k, m] matrix; both operands must be 2-D.
 [[nodiscard]] Tensor matmul(const Tensor& lhs, const Tensor& rhs);
 
+/// max(x, 0) element-wise. NaN stays NaN, as in PyTorch.
+[[nodiscard]] Tensor relu(const Tensor& input);
+
+/// The sum of every element, as a scalar tensor (shape `()`). Zero for an
+/// empty tensor.
+[[nodiscard]] Tensor sum(const Tensor& input);
+
 [[nodiscard]] Tensor operator+(const Tensor& lhs, const Tensor& rhs);
 [[nodiscard]] Tensor operator*(const Tensor& lhs, const Tensor& rhs);
 
