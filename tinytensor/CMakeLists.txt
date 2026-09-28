@@ -1,5 +1,6 @@
 add_library(tinytensor
-    src/shape.cpp)
+    src/shape.cpp
+    src/tensor.cpp)
 
 add_library(tinytensor::tinytensor ALIAS tinytensor)
 

@@ -10,7 +10,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(tinytensor_tests
-    shape_test.cpp)
+    shape_test.cpp
+    tensor_test.cpp)
 
 target_link_libraries(tinytensor_tests PRIVATE
     tinytensor::tinytensor
