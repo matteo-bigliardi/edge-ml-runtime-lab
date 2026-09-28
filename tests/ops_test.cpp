@@ -56,6 +56,48 @@ TEST_CASE("mul does not broadcast", "[ops][mul]") {
     CHECK_THROWS_AS(Tensor::zeros({2, 3}) * Tensor::zeros({3, 2}), std::invalid_argument);
 }
 
+TEST_CASE("matmul of non-square matrices", "[ops][matmul]") {
+    // Non-square on every side, so a swapped index or a transposed operand
+    // cannot produce the right numbers by accident.
+    const Tensor a = Tensor::from_vector({2, 3}, {1.0F, 2.0F, 3.0F,
+                                                  4.0F, 5.0F, 6.0F});
+    const Tensor b = Tensor::from_vector({3, 4}, {1.0F, 0.0F, 2.0F, -1.0F,
+                                                  0.0F, 1.0F, 1.0F, 2.0F,
+                                                  3.0F, -1.0F, 0.0F, 1.0F});
+
+    const Tensor product = tinytensor::matmul(a, b);
+
+    CHECK(product.shape() == Shape{2, 4});
+    CHECK(values(product) == std::vector<float>{10.0F, -1.0F, 4.0F, 6.0F,
+                                                22.0F, -1.0F, 13.0F, 12.0F});
+}
+
+TEST_CASE("matmul by the identity leaves a matrix unchanged", "[ops][matmul]") {
+    const Tensor a = Tensor::randn({3, 3}, 11);
+    const Tensor identity = Tensor::from_vector({3, 3}, {1.0F, 0.0F, 0.0F,
+                                                         0.0F, 1.0F, 0.0F,
+                                                         0.0F, 0.0F, 1.0F});
+
+    CHECK(values(tinytensor::matmul(a, identity)) == values(a));
+    CHECK(values(tinytensor::matmul(identity, a)) == values(a));
+}
+
+TEST_CASE("matmul over an empty inner dimension gives zeros", "[ops][matmul]") {
+    const Tensor product = tinytensor::matmul(Tensor::zeros({2, 0}), Tensor::zeros({0, 3}));
+
+    CHECK(product.shape() == Shape{2, 3});
+    CHECK(values(product) == std::vector<float>(6, 0.0F));
+}
+
+TEST_CASE("matmul rejects mismatched or non-2-D operands", "[ops][matmul]") {
+    CHECK_THROWS_AS(tinytensor::matmul(Tensor::zeros({2, 3}), Tensor::zeros({2, 3})),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(tinytensor::matmul(Tensor::zeros({3}), Tensor::zeros({3, 2})),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(tinytensor::matmul(Tensor::zeros({2, 2, 2}), Tensor::zeros({2, 2})),
+                    std::invalid_argument);
+}
+
 TEST_CASE("the result of an operation owns new storage", "[ops]") {
     const Tensor a = Tensor::ones({2});
     const Tensor b = Tensor::ones({2});

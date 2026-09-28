@@ -16,6 +16,9 @@ namespace tinytensor {
 /// Element-wise product. Shapes must match exactly.
 [[nodiscard]] Tensor mul(const Tensor& lhs, const Tensor& rhs);
 
+/// Matrix product of an [n, k] and a [k, m] matrix; both operands must be 2-D.
+[[nodiscard]] Tensor matmul(const Tensor& lhs, const Tensor& rhs);
+
 [[nodiscard]] Tensor operator+(const Tensor& lhs, const Tensor& rhs);
 [[nodiscard]] Tensor operator*(const Tensor& lhs, const Tensor& rhs);
 

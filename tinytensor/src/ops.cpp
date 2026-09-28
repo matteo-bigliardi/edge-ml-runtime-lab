@@ -1,5 +1,7 @@
 #include "tinytensor/ops.hpp"
 
+#include "tensor_impl.hpp"
+
 #include <cstddef>
 #include <functional>
 #include <sstream>
@@ -68,6 +70,36 @@ Tensor mul(const Tensor& lhs, const Tensor& rhs) {
         throw_incompatible("mul", lhs, rhs, "expected equal shapes");
     }
     return elementwise(lhs, rhs, std::multiplies<>{});
+}
+
+Tensor matmul(const Tensor& lhs, const Tensor& rhs) {
+    const Shape& a_shape = lhs.shape();
+    const Shape& b_shape = rhs.shape();
+    if (a_shape.ndim() != 2 || b_shape.ndim() != 2 || a_shape.dim(1) != b_shape.dim(0)) {
+        throw_incompatible("matmul", lhs, rhs, "expected [n, k] and [k, m]");
+    }
+
+    const std::size_t n = to_index(a_shape.dim(0));
+    const std::size_t k = to_index(a_shape.dim(1));
+    const std::size_t m = to_index(b_shape.dim(1));
+    const auto a = lhs.data();
+    const auto b = rhs.data();
+    std::vector<float> out(n * m);
+
+    // The textbook loop order: one dot product per output element, walking
+    // rhs down a column with stride m. It is naive on purpose, as the baseline
+    // the optimised variant in the benchmarks is measured against. It
+    // accumulates in float, like the float kernels it is compared with.
+    for (std::size_t i = 0; i < n; ++i) {
+        for (std::size_t j = 0; j < m; ++j) {
+            float acc = 0.0F;
+            for (std::size_t p = 0; p < k; ++p) {
+                acc += a[i * k + p] * b[p * m + j];
+            }
+            out[i * m + j] = acc;
+        }
+    }
+    return Tensor::from_vector({a_shape.dim(0), b_shape.dim(1)}, std::move(out));
 }
 
 Tensor operator+(const Tensor& lhs, const Tensor& rhs) {
