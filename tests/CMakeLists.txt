@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(tinytensor_tests
     autograd_test.cpp
+    gradcheck_test.cpp
     ops_test.cpp
     shape_test.cpp
     tensor_test.cpp)
