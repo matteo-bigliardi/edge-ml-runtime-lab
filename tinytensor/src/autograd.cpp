@@ -1,5 +1,7 @@
 #include "autograd.hpp"
 
+#include "tinytensor/no_grad.hpp"
+
 #include <cstddef>
 #include <stdexcept>
 #include <unordered_map>
@@ -9,6 +11,10 @@
 
 namespace tinytensor {
 namespace {
+
+// Per thread, as in PyTorch: a guard on one thread must not silently stop
+// another thread from recording its graph.
+thread_local bool grad_enabled = true;
 
 /// Every tensor that backward() has to visit from `root`, each one after all
 /// of its inputs. Only paths through tensors that require a gradient are
@@ -90,7 +96,22 @@ void run_backward(TensorImpl* root) {
 
 }  // namespace
 
+bool is_grad_enabled() noexcept {
+    return grad_enabled;
+}
+
+NoGradGuard::NoGradGuard() noexcept : previous_(grad_enabled) {
+    grad_enabled = false;
+}
+
+NoGradGuard::~NoGradGuard() {
+    grad_enabled = previous_;
+}
+
 void record(const Tensor& result, std::initializer_list<Tensor> inputs, BackwardFn backward) {
+    if (!grad_enabled) {
+        return;
+    }
     bool any_requires_grad = false;
     for (const Tensor& input : inputs) {
         any_requires_grad = any_requires_grad || input.requires_grad();

@@ -1,3 +1,4 @@
+#include "tinytensor/no_grad.hpp"
 #include "tinytensor/ops.hpp"
 #include "tinytensor/tensor.hpp"
 
@@ -8,6 +9,7 @@
 #include <stdexcept>
 #include <vector>
 
+using tinytensor::NoGradGuard;
 using tinytensor::Tensor;
 using tinytensor::testing::values;
 
@@ -133,4 +135,30 @@ TEST_CASE("clone is a detached leaf", "[autograd]") {
     CHECK_FALSE(x.clone().grad().has_value());
     // A leaf, unlike y: it may be made a parameter of its own.
     CHECK_NOTHROW(copy.set_requires_grad(true));
+}
+
+TEST_CASE("no_grad records nothing, and recording resumes after it", "[autograd][no_grad]") {
+    const Tensor x = parameter(Tensor::ones({2}));
+
+    {
+        const NoGradGuard no_grad;
+        const Tensor y = x + x;
+        CHECK_FALSE(y.requires_grad());
+    }
+
+    CHECK((x + x).requires_grad());
+}
+
+TEST_CASE("no_grad guards nest", "[autograd][no_grad]") {
+    CHECK(tinytensor::is_grad_enabled());
+    {
+        const NoGradGuard outer;
+        {
+            const NoGradGuard inner;
+            CHECK_FALSE(tinytensor::is_grad_enabled());
+        }
+        // Leaving the inner guard restores the outer one's state, not "on".
+        CHECK_FALSE(tinytensor::is_grad_enabled());
+    }
+    CHECK(tinytensor::is_grad_enabled());
 }
