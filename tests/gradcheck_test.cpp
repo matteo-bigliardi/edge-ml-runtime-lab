@@ -30,6 +30,14 @@ TEST_CASE("gradient check: mul", "[gradcheck][mul]") {
                     {Tensor::randn({2, 3}, 5), Tensor::randn({2, 3}, 6)});
 }
 
+TEST_CASE("gradient check: relu", "[gradcheck][relu]") {
+    // Every value is further from zero than the finite-difference step: at
+    // the kink the two sides of the difference would straddle it, and the
+    // numerical slope would be meaningless there.
+    check_gradients([](const Inputs& in) { return weighted_sum(tinytensor::relu(in[0])); },
+                    {Tensor::from_vector({2, 3}, {-1.5F, 0.3F, 2.0F, -0.2F, 0.7F, -0.9F})});
+}
+
 TEST_CASE("gradient check: sum", "[gradcheck][sum]") {
     check_gradients([](const Inputs& in) { return tinytensor::sum(in[0]); },
                     {Tensor::randn({2, 3}, 7)});

@@ -160,7 +160,18 @@ Tensor relu(const Tensor& input) {
         // into a silent zero.
         out[i] = x[i] < 0.0F ? 0.0F : x[i];
     }
-    return Tensor::from_vector(input.shape(), std::move(out));
+    Tensor result = Tensor::from_vector(input.shape(), std::move(out));
+    // The slope is 1 where the input was positive and 0 where it was not. At
+    // exactly zero relu has no derivative; 0 is the convention PyTorch uses.
+    record(result, {input}, [](std::span<const float> grad, const TensorInputs& inputs) {
+        const std::vector<float>& x = inputs[0]->storage;
+        std::vector<float> dx(grad.size());
+        for (std::size_t i = 0; i < dx.size(); ++i) {
+            dx[i] = x[i] > 0.0F ? grad[i] : 0.0F;
+        }
+        return InputGrads{std::move(dx)};
+    });
+    return result;
 }
 
 Tensor sum(const Tensor& input) {

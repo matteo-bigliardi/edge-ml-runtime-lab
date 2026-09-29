@@ -84,6 +84,16 @@ TEST_CASE("the square of a tensor has gradient 2x", "[autograd][mul]") {
     CHECK(values(*x.grad()) == std::vector<float>{2.0F, -4.0F, 1.0F});
 }
 
+TEST_CASE("relu passes the gradient only where the input was positive", "[autograd][relu]") {
+    // Zero counts as not positive: relu has no derivative there, and 0 is
+    // the convention PyTorch uses.
+    const Tensor x = parameter(Tensor::from_vector({4}, {-1.0F, 0.0F, 0.5F, 3.0F}));
+
+    tinytensor::sum(tinytensor::relu(x)).backward();
+
+    CHECK(values(*x.grad()) == std::vector<float>{0.0F, 0.0F, 1.0F, 1.0F});
+}
+
 TEST_CASE("the broadcast bias receives the gradient summed over rows", "[autograd]") {
     const Tensor matrix = parameter(Tensor::zeros({3, 2}));
     const Tensor bias = parameter(Tensor::zeros({2}));
