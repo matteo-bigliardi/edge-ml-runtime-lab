@@ -66,6 +66,24 @@ TEST_CASE("a shared intermediate is propagated once, after all of its uses", "[a
     CHECK(values(*x.grad()) == std::vector<float>(2, 4.0F));
 }
 
+TEST_CASE("mul sends each input the other one", "[autograd][mul]") {
+    const Tensor x = parameter(Tensor::from_vector({3}, {1.0F, 2.0F, 3.0F}));
+    const Tensor y = parameter(Tensor::from_vector({3}, {4.0F, 5.0F, 6.0F}));
+
+    tinytensor::sum(x * y).backward();
+
+    CHECK(values(*x.grad()) == values(y));
+    CHECK(values(*y.grad()) == values(x));
+}
+
+TEST_CASE("the square of a tensor has gradient 2x", "[autograd][mul]") {
+    const Tensor x = parameter(Tensor::from_vector({3}, {1.0F, -2.0F, 0.5F}));
+
+    tinytensor::sum(x * x).backward();
+
+    CHECK(values(*x.grad()) == std::vector<float>{2.0F, -4.0F, 1.0F});
+}
+
 TEST_CASE("the broadcast bias receives the gradient summed over rows", "[autograd]") {
     const Tensor matrix = parameter(Tensor::zeros({3, 2}));
     const Tensor bias = parameter(Tensor::zeros({2}));

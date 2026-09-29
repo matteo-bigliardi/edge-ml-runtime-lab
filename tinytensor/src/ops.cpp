@@ -101,7 +101,24 @@ Tensor mul(const Tensor& lhs, const Tensor& rhs) {
     if (lhs.shape() != rhs.shape()) {
         throw_incompatible("mul", lhs, rhs, "expected equal shapes");
     }
-    return elementwise(lhs, rhs, std::multiplies<>{});
+    Tensor result = elementwise(lhs, rhs, std::multiplies<>{});
+    // d(a * b)/da = b and d(a * b)/db = a: each input gets the output's
+    // gradient scaled by the other input. For x * x both terms land on x.
+    record(result, {lhs, rhs}, [](std::span<const float> grad, const TensorInputs& inputs) {
+        InputGrads grads(inputs.size());
+        for (std::size_t i = 0; i < inputs.size(); ++i) {
+            if (!inputs[i]->requires_grad) {
+                continue;
+            }
+            const std::vector<float>& other = inputs[1 - i]->storage;
+            grads[i].resize(grad.size());
+            for (std::size_t j = 0; j < grad.size(); ++j) {
+                grads[i][j] = grad[j] * other[j];
+            }
+        }
+        return grads;
+    });
+    return result;
 }
 
 Tensor matmul(const Tensor& lhs, const Tensor& rhs) {
