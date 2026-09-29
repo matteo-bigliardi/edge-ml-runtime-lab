@@ -1,4 +1,5 @@
 add_library(tinytensor
+    src/autograd.cpp
     src/ops.cpp
     src/shape.cpp
     src/tensor.cpp)

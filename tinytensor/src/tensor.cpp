@@ -33,7 +33,7 @@ Tensor Tensor::from_vector(Shape shape, std::vector<float> values) {
                 << " elements, got " << values.size() << " values";
         throw std::invalid_argument(message.str());
     }
-    return Tensor(std::make_shared<TensorImpl>(TensorImpl{std::move(shape), std::move(values)}));
+    return Tensor(std::make_shared<TensorImpl>(std::move(shape), std::move(values)));
 }
 
 Tensor Tensor::randn(Shape shape, std::uint64_t seed) {
@@ -87,7 +87,9 @@ float Tensor::item() const {
 }
 
 Tensor Tensor::clone() const {
-    return Tensor(std::make_shared<TensorImpl>(*impl_));
+    // Copies the values only: copying the whole impl would also copy the
+    // graph node, and the clone would claim a history it does not have.
+    return Tensor(std::make_shared<TensorImpl>(impl_->shape, impl_->storage));
 }
 
 }  // namespace tinytensor

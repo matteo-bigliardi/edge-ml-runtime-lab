@@ -1,9 +1,11 @@
 #include "tinytensor/ops.hpp"
 
+#include "autograd.hpp"
 #include "tensor_impl.hpp"
 
 #include <cstddef>
 #include <functional>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -48,9 +50,17 @@ Tensor add_to_every_row(const Tensor& matrix, const Tensor& row) {
     return Tensor::from_vector(matrix.shape(), std::move(out));
 }
 
-}  // namespace
+/// The gradient of a vector that was added to every row: each row's gradient
+/// flows back to the same vector, so they sum.
+std::vector<float> sum_over_rows(std::span<const float> grad, std::size_t cols) {
+    std::vector<float> out(cols, 0.0F);
+    for (std::size_t i = 0; i < grad.size(); ++i) {
+        out[i % cols] += grad[i];
+    }
+    return out;
+}
 
-Tensor add(const Tensor& lhs, const Tensor& rhs) {
+Tensor add_values(const Tensor& lhs, const Tensor& rhs) {
     if (lhs.shape() == rhs.shape()) {
         return elementwise(lhs, rhs, std::plus<>{});
     }
@@ -63,6 +73,28 @@ Tensor add(const Tensor& lhs, const Tensor& rhs) {
         return add_to_every_row(rhs, lhs);
     }
     throw_incompatible("add", lhs, rhs, "expected equal shapes, or [n, m] with [m]");
+}
+
+}  // namespace
+
+Tensor add(const Tensor& lhs, const Tensor& rhs) {
+    Tensor result = add_values(lhs, rhs);
+    // d(a + b)/da = 1, so an input shaped like the output gets the output's
+    // gradient unchanged. The broadcast bias needs it summed over the rows.
+    record(result, {lhs, rhs},
+           [out_shape = result.shape()](std::span<const float> grad, const TensorInputs& inputs) {
+               InputGrads grads(inputs.size());
+               for (std::size_t i = 0; i < inputs.size(); ++i) {
+                   if (!inputs[i]->requires_grad) {
+                       continue;
+                   }
+                   grads[i] = inputs[i]->shape == out_shape
+                                  ? std::vector<float>(grad.begin(), grad.end())
+                                  : sum_over_rows(grad, inputs[i]->storage.size());
+               }
+               return grads;
+           });
+    return result;
 }
 
 Tensor mul(const Tensor& lhs, const Tensor& rhs) {
@@ -123,7 +155,13 @@ Tensor sum(const Tensor& input) {
     for (const float value : input.data()) {
         total += value;
     }
-    return Tensor::from_vector({}, {static_cast<float>(total)});
+    Tensor result = Tensor::from_vector({}, {static_cast<float>(total)});
+    // Every element enters the total with weight one, so each receives the
+    // total's gradient as it is.
+    record(result, {input}, [](std::span<const float> grad, const TensorInputs& inputs) {
+        return InputGrads{std::vector<float>(inputs[0]->storage.size(), grad[0])};
+    });
+    return result;
 }
 
 Tensor operator+(const Tensor& lhs, const Tensor& rhs) {
