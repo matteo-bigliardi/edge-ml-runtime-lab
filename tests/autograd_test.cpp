@@ -94,6 +94,19 @@ TEST_CASE("relu passes the gradient only where the input was positive", "[autogr
     CHECK(values(*x.grad()) == std::vector<float>{0.0F, 0.0F, 1.0F, 1.0F});
 }
 
+TEST_CASE("matmul sends each operand the other one, transposed", "[autograd][matmul]") {
+    // C = A B with A [1, 2] and B [2, 1]: dC/dA = B^T and dC/dB = A^T.
+    const Tensor a = parameter(Tensor::from_vector({1, 2}, {1.0F, 2.0F}));
+    const Tensor b = parameter(Tensor::from_vector({2, 1}, {3.0F, 4.0F}));
+
+    tinytensor::sum(tinytensor::matmul(a, b)).backward();
+
+    CHECK(a.grad()->shape() == a.shape());
+    CHECK(values(*a.grad()) == std::vector<float>{3.0F, 4.0F});
+    CHECK(b.grad()->shape() == b.shape());
+    CHECK(values(*b.grad()) == std::vector<float>{1.0F, 2.0F});
+}
+
 TEST_CASE("the broadcast bias receives the gradient summed over rows", "[autograd]") {
     const Tensor matrix = parameter(Tensor::zeros({3, 2}));
     const Tensor bias = parameter(Tensor::zeros({2}));

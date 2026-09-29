@@ -148,7 +148,48 @@ Tensor matmul(const Tensor& lhs, const Tensor& rhs) {
             out[i * m + j] = acc;
         }
     }
-    return Tensor::from_vector({a_shape.dim(0), b_shape.dim(1)}, std::move(out));
+    Tensor result = Tensor::from_vector({a_shape.dim(0), b_shape.dim(1)}, std::move(out));
+
+    // For C = A B: dA = dC B^T and dB = A^T dC. Both are loops over the stored
+    // layouts, without materialising a transpose.
+    record(result, {lhs, rhs}, [](std::span<const float> grad, const TensorInputs& inputs) {
+        const std::vector<float>& a_values = inputs[0]->storage;
+        const std::vector<float>& b_values = inputs[1]->storage;
+        const std::size_t rows = to_index(inputs[0]->shape.dim(0));
+        const std::size_t inner = to_index(inputs[0]->shape.dim(1));
+        const std::size_t cols = to_index(inputs[1]->shape.dim(1));
+
+        InputGrads grads(2);
+        if (inputs[0]->requires_grad) {
+            // dA[i, p] = sum_j dC[i, j] B[p, j]: row i of dC against row p of
+            // B, both contiguous.
+            grads[0].assign(rows * inner, 0.0F);
+            for (std::size_t i = 0; i < rows; ++i) {
+                for (std::size_t p = 0; p < inner; ++p) {
+                    float acc = 0.0F;
+                    for (std::size_t j = 0; j < cols; ++j) {
+                        acc += grad[i * cols + j] * b_values[p * cols + j];
+                    }
+                    grads[0][i * inner + p] = acc;
+                }
+            }
+        }
+        if (inputs[1]->requires_grad) {
+            // dB[p, j] = sum_i A[i, p] dC[i, j], accumulated one i at a time
+            // so the inner loop runs along contiguous rows of dB and dC.
+            grads[1].assign(inner * cols, 0.0F);
+            for (std::size_t i = 0; i < rows; ++i) {
+                for (std::size_t p = 0; p < inner; ++p) {
+                    const float a_ip = a_values[i * inner + p];
+                    for (std::size_t j = 0; j < cols; ++j) {
+                        grads[1][p * cols + j] += a_ip * grad[i * cols + j];
+                    }
+                }
+            }
+        }
+        return grads;
+    });
+    return result;
 }
 
 Tensor relu(const Tensor& input) {
